@@ -206,7 +206,9 @@ class MPM_Simulator_WARP:
         # assert tensor_x.shape[0] == tensor_cov.reshape(-1, 6).shape[0]
         self.initialize(self.n_particles, n_grid, grid_lim, device=device)
 
-        self.import_particle_x_from_torch(tensor_x, device)
+        self.mpm_state.particle_x = wp.from_numpy(
+            tensor_x, dtype=wp.vec3, device=device
+        )
         self.mpm_state.particle_vol = wp.from_numpy(
             tensor_volume.detach().clone().cpu().numpy(), dtype=float, device=device
         )
