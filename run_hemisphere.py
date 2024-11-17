@@ -16,33 +16,44 @@ mpm_solver = MPM_Simulator_WARP(10) # initialize with whatever number is fine. i
 # You can either load sampling data from an external h5 file, containing initial position (n,3) and particle_volume (n,)
 # mpm_solver.load_from_sampling("sand_column.h5", n_grid = 150, device=dvc) 
 # mesh is in (-1,1) hence setting grid_lim to 2.0 and translating object by 1.0 to get it in (0,grid_lim)
-tensor_x = torch.asarray(np.array(1.0+ tetra_mesh.points,dtype=np.float32))
+tensor_x = torch.asarray(np.array(2.0+ tetra_mesh.points,dtype=np.float32))
 
 
 
 mpm_solver.load_initial_data_from_torch(tensor_x=tensor_x,
                                         tensor_volume=torch.ones(len(tetra_mesh.points)) * 2.5e-8,
                                         n_grid=150,
-                                        grid_lim=2.0,
+                                        grid_lim=4.0,
                                         device=dvc)
 
 # Or load from torch tensor (also position and volume)
 # Here we borrow the data from h5, but you can use your own
 # Note: You must provide 'density=..' to set particle_mass = density * particle_volume
 
+
+density=100.0
+k_mu=9000.00 
+k_lambda=5000.0
+k_damp=300.0
+
+nu = k_lambda/(2*(k_lambda+k_mu))
+E = 2*k_mu*(1+nu)
+
+
+
 material_params = {
-    'E': 2000,
-    'nu': 0.2,
-    "material": "sand",
+    'E': 1e4,
+    'nu': .3,
+    "material": "jelly",
     'friction_angle': 35,
     'g': [0.0, -20.0, 0.0],
-    "density": 200.0
+    "density": density
 }
 mpm_solver.set_parameters_dict(material_params)
 
 mpm_solver.finalize_mu_lam_bulk() # set mu and lambda from the E and nu input
 
-mpm_solver.add_surface_collider((0.0, 0.85, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
+mpm_solver.add_surface_collider((0.0, 2.0, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
 
 
 directory_to_save = './sim_results/hemisphere'
