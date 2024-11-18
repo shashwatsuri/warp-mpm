@@ -399,6 +399,10 @@ def grid_normalization_and_gravity(
         v_out = v_out + dt * model.gravitational_accelaration
         state.grid_v_out[grid_x, grid_y, grid_z] = v_out
 
+# @wp.kernel
+# def amr(state: MPMStateStruct, model: MPMModelStruct, dt: float):
+#     grid_x, grid_y, grid_z = wp.tid()
+
 
 @wp.kernel
 def g2p(state: MPMStateStruct, model: MPMModelStruct, dt: float):
