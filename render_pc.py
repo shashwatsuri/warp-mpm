@@ -21,45 +21,25 @@ import numpy as np
 np.random.seed(450)
 wp.init()
 
-class Hemisphere:
-    def __init__(self, stage,traj_path):
+class HemispherePC:
+    def __init__(self, stage,sim_frames):
         self.sim_time = 0.0
-        self.trajectories =np.load(traj_path)
-        if traj_path.split('.')[-1] == 'npz':
-            self.trajectories = self.trajectories['traj']
-        self.sim_frames = int(self.trajectories.shape[0])
+        self.sim_frames = sim_frames
         self.idx=0
         self.sim_dt = 1.0
-        self.num_particles = self.trajectories.shape[1]
-        self.sample_size=self.num_particles
 
         builder = wp.sim.ModelBuilder()
         self.model = builder.finalize()
         self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 1)
-        self.indices = np.random.choice(self.num_particles, self.sample_size, replace=False)
 
-    def render(self):
+    def render(self,trajectory):
         if self.renderer is None:
             return
         self.renderer.begin_frame(self.sim_time)
-        for i in self.indices:
+        for p in trajectory:
             self.renderer.render_sphere(
-                name="sphere"+str(i), pos=self.trajectories[self.idx,i],rot = wp.quat_identity(), radius=0.07, color=(1.0, 0.1, 0.1)
+                name="sphere"+str(i), pos=p,rot = wp.quat_identity(), radius=0.07, color=(1.0, 0.1, 0.1)
             )
-
         self.renderer.end_frame()
-        self.idx +=1
         self.sim_time += self.sim_dt
 
-            
-
-
-if __name__ == "__main__":
-    stage_path = "usds/"+ "c3t1_masks" + '.usd'
-    traj_path = "/scratch-ssd/Repos/deformgs/output/hemisphere/c3t1_masks/train/ours_14000/all_trajs.npy"
-    hemisphere = Hemisphere(stage_path,traj_path)
-    for i in range(hemisphere.sim_frames):
-        hemisphere.render()
-
-    if hemisphere.renderer:
-        hemisphere.renderer.save()

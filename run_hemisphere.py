@@ -6,6 +6,7 @@ import torch
 import meshio
 wp.init()
 wp.config.verify_cuda = True
+from render_pc import HemispherePC
 
 dvc = "cuda:0"
 
@@ -39,6 +40,8 @@ k_damp=300.0
 nu = k_lambda/(2*(k_lambda+k_mu))
 E = 2*k_mu*(1+nu)
 
+sim_frames = 100
+
 
 
 material_params = {
@@ -60,11 +63,15 @@ directory_to_save = './sim_results/hemisphere'
 if not os.path.exists(directory_to_save):
     os.makedirs(directory_to_save)
 
+stage_path = os.path.join(directory_to_save,"hemisphere.usd")
+hemisphere_pc = HemispherePC(stage_path,sim_frames)
 
 traj=[]
-for k in range(0,100):
-    save_data_at_frame(mpm_solver, directory_to_save, k, save_to_ply=True, save_to_h5=False)
-    traj.append(mpm_solver.mpm_state.particle_x.numpy())
+for k in range(sim_frames):
+    # save_data_at_frame(mpm_solver, directory_to_save, k, save_to_ply=True, save_to_h5=False)
+    # traj.append(mpm_solver.mpm_state.particle_x.numpy())
+    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy())
     mpm_solver.p2g2p(k, 0.002, device=dvc)
 
-np.save(os.path.join(directory_to_save, 'all_trajs.npy'),np.array(traj))
+if hemisphere_pc.renderer:
+    hemisphere_pc.renderer.save()
