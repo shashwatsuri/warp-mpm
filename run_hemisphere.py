@@ -67,10 +67,11 @@ stage_path = os.path.join(directory_to_save,"hemisphere.usd")
 hemisphere_pc = HemispherePC(stage_path,sim_frames)
 
 traj=[]
+indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),5_000,replace=False)
 for k in range(sim_frames):
     # save_data_at_frame(mpm_solver, directory_to_save, k, save_to_ply=True, save_to_h5=False)
     # traj.append(mpm_solver.mpm_state.particle_x.numpy())
-    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy())
+    hemisphere_pc.render(5.0*(mpm_solver.mpm_state.particle_x.numpy()[indices]-2.0))
     mpm_solver.p2g2p(k, 0.002, device=dvc)
 
 if hemisphere_pc.renderer:

@@ -21,6 +21,16 @@ import numpy as np
 np.random.seed(450)
 wp.init()
 
+# @wp.kernel
+# def render_spheres(
+#     trajectory: wp.array(dtype=wp.vec3), #type:ignore
+#     renderer: wp.sim.render.SimRendererUsd,
+# ):
+#     tid = wp.tid()
+#     renderer.render_sphere(
+#                 name="sphere"+str(tid), pos=trajectory[tid],rot = wp.quat_identity(), radius=0.07, color=(1.0, 0.1, 0.1)
+#             )
+
 class HemispherePC:
     def __init__(self, stage,sim_frames):
         self.sim_time = 0.0
@@ -36,10 +46,17 @@ class HemispherePC:
         if self.renderer is None:
             return
         self.renderer.begin_frame(self.sim_time)
+        # wp.launch(
+        #     kernel=render_spheres,
+        #     dim=len(trajectory),
+        #     inputs=[trajectory,self.renderer]
+        # )
+        i=0
         for p in trajectory:
             self.renderer.render_sphere(
                 name="sphere"+str(i), pos=p,rot = wp.quat_identity(), radius=0.07, color=(1.0, 0.1, 0.1)
             )
+            i+=1
         self.renderer.end_frame()
         self.sim_time += self.sim_dt
 
