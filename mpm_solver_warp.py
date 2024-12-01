@@ -494,17 +494,6 @@ class MPM_Simulator_WARP:
                 if self.modify_bc[k] is not None:
                     self.modify_bc[k](self.time, dt, self.collider_params[k])
 
-        # # apply mesh refinement
-        # with wp.ScopedTimer(
-        #     "apply_mesh_refinement", synchronize=True, print=False, dict=self.time_profile
-        # ):
-        #     wp.launch(
-        #         kernel=amr,
-        #         dim= (grid_size),
-        #         inputs=[self.mpm_state, self.mpm_model, dt],
-        #         device=device,
-        #     )  # x, v, C, F_trial are updated           
-
         # g2p
         with wp.ScopedTimer(
             "g2p", synchronize=True, print=False, dict=self.time_profile

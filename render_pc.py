@@ -36,27 +36,19 @@ class HemispherePC:
         self.sim_time = 0.0
         self.sim_frames = sim_frames
         self.idx=0
-        self.sim_dt = 1.0
+        self.sim_dt = 0.02
 
         builder = wp.sim.ModelBuilder()
         self.model = builder.finalize()
-        self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 1)
+        self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 60)
 
     def render(self,trajectory):
         if self.renderer is None:
             return
         self.renderer.begin_frame(self.sim_time)
-        # wp.launch(
-        #     kernel=render_spheres,
-        #     dim=len(trajectory),
-        #     inputs=[trajectory,self.renderer]
-        # )
-        i=0
-        for p in trajectory:
-            self.renderer.render_sphere(
-                name="sphere"+str(i), pos=p,rot = wp.quat_identity(), radius=0.07, color=(1.0, 0.1, 0.1)
+        self.renderer.render_points(
+                name="mpm_points", points=trajectory , radius=0.07, colors=(0.8, 0.4, 0.2)
             )
-            i+=1
         self.renderer.end_frame()
         self.sim_time += self.sim_dt
 

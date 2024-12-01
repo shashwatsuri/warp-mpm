@@ -40,7 +40,7 @@ k_damp=300.0
 nu = k_lambda/(2*(k_lambda+k_mu))
 E = 2*k_mu*(1+nu)
 
-sim_frames = 100
+sim_frames = 200
 
 
 
@@ -67,7 +67,7 @@ stage_path = os.path.join(directory_to_save,"hemisphere.usd")
 hemisphere_pc = HemispherePC(stage_path,sim_frames)
 
 traj=[]
-indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),5_000,replace=False)
+indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),4_000,replace=False)
 for k in range(sim_frames):
     # save_data_at_frame(mpm_solver, directory_to_save, k, save_to_ply=True, save_to_h5=False)
     # traj.append(mpm_solver.mpm_state.particle_x.numpy())
