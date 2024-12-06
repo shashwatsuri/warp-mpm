@@ -1,6 +1,7 @@
 import warp as wp
 import warp.torch
 import torch
+import warp.sim
 
 
 @wp.struct
@@ -103,7 +104,22 @@ class Dirichlet_collider:
     horizontal_axis_2: wp.vec3
     half_height_and_radius: wp.vec2
     
-
+@wp.struct
+class SDF_Collider:
+    #add_sdf_params
+    ke:float=1.0e4,
+    kd:float=1000.0,
+    kf:float=1000.0,
+    mu:float=0.5,
+    body:int=-1,
+    pos:wp.vec3 = wp.vec3(3.0, 15.0, 0.0),
+    scale:wp.vec3 = wp.vec3(1.0,1.0,1.0),
+    radius:float=1.0,
+    #other collider params
+    start_time: float = 0.0,
+    end_time: float = 999.0
+    friction: float = 0.0,
+    surface_type: int =0
 
 @wp.struct
 class Impulse_modifier:
