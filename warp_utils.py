@@ -201,6 +201,11 @@ def set_vec3_to_zero(target_array: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
+def set_vec3(target_array: wp.array(dtype=wp.vec3),target_velocity:wp.vec3f):
+    tid = wp.tid()
+    target_array[tid] = target_velocity
+
+@wp.kernel
 def set_mat33_to_identity(target_array: wp.array(dtype=wp.mat33)):
     tid = wp.tid()
     target_array[tid] = wp.mat33(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)

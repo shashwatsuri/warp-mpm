@@ -21,10 +21,10 @@ from warp_utils import Dirichlet_collider,SDF_Collider
 
 np.random.seed(450)
 wp.init()
-dvc="cuda:1"
+dvc="cuda:0"
 
 class HemispherePC:
-    def __init__(self, stage,sim_frames,collider_params):
+    def __init__(self, stage,sim_frames,collider_params,offset):
         self.sim_time = 0.0
         self.sim_frames = sim_frames
         self.idx=0
@@ -35,6 +35,7 @@ class HemispherePC:
         self.model = builder.finalize(device=dvc)
         self.model.ground= False
         self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 30)
+        self.offset = offset
 
     def render(self,trajectory):
         if self.renderer is None:
@@ -44,7 +45,7 @@ class HemispherePC:
             if "Dirichlet_collider" in str(collider):
                  self.renderer.render_plane(
                       name="mpm_plane_collider",
-                      pos=collider.point - (0.0,2.0,0.0),
+                      pos=collider.point,
                       rot=wp.quat(1.0, 0.0, 0.0, 0.0),
                       width=10.0,
                       length=10.0
@@ -57,7 +58,7 @@ class HemispherePC:
                       radius=collider.radius
                  )
         self.renderer.render_points(
-                name="mpm_points", points=trajectory , radius=0.07, colors=(0.8, 0.4, 0.2)
+                name="mpm_points", points=trajectory, radius=0.007, colors=(0.8, 0.4, 0.2)
             )
         self.renderer.end_frame()
         self.sim_time += self.sim_dt
