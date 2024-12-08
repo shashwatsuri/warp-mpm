@@ -7,3 +7,9 @@
 
 ### Dec 6
 - [x]  Rearrange the scene so the particle falls on the collider
+
+### Dec 7
+- [x] Sphere collision works!
+- [ ] Setup the scene with the rocks loaded as the SDF and make sure the rendering works
+- [ ] Write the collision detection function for the rocks
+- [ ] Get  the collider to move as a function of time

@@ -733,6 +733,85 @@ class MPM_Simulator_WARP:
         start_time=0.0,
         end_time=999.0,
     ):
+        # lim = radius+1.0
+        # mins = np.array([-lim, -lim, -lim])
+        # voxel_size = self.mpm_model.dx
+        # maxs = np.array([lim, lim, lim])
+        # nums = np.ceil((maxs - mins) / (voxel_size)).astype(dtype=int)
+        # sphere_sdf_np = np.zeros(tuple(nums))
+        # for x in range(nums[0]):
+        #     for y in range(nums[1]):
+        #         for z in range(nums[2]):
+        #             pos = mins + voxel_size * np.array([x, y, z])
+        #             dis = np.linalg.norm(pos)
+        #             sphere_sdf_np[x, y, z] = dis - radius
+
+        # sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, radius*(1+voxel_size))
+        # sphere_sdf = warp.sim.SDF(sphere_vdb)
+        
+        collider_param = Sphere_Collider()
+        collider_param.start_time=start_time
+        collider_param.end_time=end_time
+        collider_param.friction=friction
+        collider_param.pos=center
+        collider_param.radius=radius
+
+        if surface == "sticky" and friction != 0:
+            raise ValueError("friction must be 0 on sticky surfaces.")
+        if surface == "sticky":
+            collider_param.surface_type = 0
+        elif surface == "slip":
+            collider_param.surface_type = 1
+        elif surface == "cut":
+            collider_param.surface_type = 11
+        else:
+            collider_param.surface_type = 2
+
+        self.collider_params.append(collider_param)
+        
+        #-------------------------------------------------------------------------------
+
+        @wp.kernel
+        def collide(
+            time: float,
+            dt: float,
+            state: MPMStateStruct,
+            model: MPMModelStruct,
+            param: Sphere_Collider,
+        ):
+            grid_x, grid_y, grid_z = wp.tid()
+            if time >= param.start_time and time < param.end_time:
+                offset = wp.vec3(
+                    float(grid_x) * model.dx,
+                    float(grid_y) * model.dx,
+                    float(grid_z) * model.dx,
+                )
+                radius= param.radius
+                pos = param.pos
+                dist = wp.length(pos - offset)
+                # n = wp.vec3(param.normal[0], param.normal[1], param.normal[2])
+                # dotproduct = wp.dot(offset, n)
+
+                if dist < radius:
+                    if param.surface_type == 0:
+                        # print(dist)
+                        state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
+                            0.0, 0.0, 0.0
+                        )
+
+        self.grid_postprocess.append(collide)
+        self.modify_bc.append(None)
+
+
+    def add_sdf_collider(
+        self,
+        center,
+        radius,
+        surface="sticky",
+        friction=0.0,
+        start_time=0.0,
+        end_time=999.0,
+    ):
         lim = radius+1.0
         mins = np.array([-lim, -lim, -lim])
         voxel_size = self.mpm_model.dx
@@ -746,15 +825,19 @@ class MPM_Simulator_WARP:
                     dis = np.linalg.norm(pos)
                     sphere_sdf_np[x, y, z] = dis - radius
 
-        sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, radius*(1+voxel_size))
-        sphere_sdf = warp.sim.SDF(sphere_vdb)
-        
+        # sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, radius*(1+voxel_size))    
+        sphere_sdf_wp = wp.array3d(sphere_sdf_np, dtype=float)    
         collider_param = SDF_Collider()
         collider_param.start_time=start_time
         collider_param.end_time=end_time
         collider_param.friction=friction
         collider_param.pos=center
         collider_param.radius=radius
+        collider_param.sdf = sphere_sdf_wp
+        collider_param.mins = wp.vec3f(mins)
+        collider_param.voxel_size = voxel_size
+        collider_param.nums = wp.array(nums,dtype=int)
+        collider_param.maxs = wp.vec3f(maxs)
 
         if surface == "sticky" and friction != 0:
             raise ValueError("friction must be 0 on sticky surfaces.")
@@ -786,54 +869,20 @@ class MPM_Simulator_WARP:
                     float(grid_y) * model.dx,
                     float(grid_z) * model.dx,
                 )
-                radius= param.radius
-                pos = param.pos
-                dist = wp.length(pos - offset)
-                # n = wp.vec3(param.normal[0], param.normal[1], param.normal[2])
-                # dotproduct = wp.dot(offset, n)
-
-                if dist < radius:
-                    if param.surface_type == 0:
-                        # print(dist)
-                        state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
+                mins = param.mins+param.pos
+                voxel_size = param.voxel_size
+                maxs = param.maxs+param.pos
+                nums = param.nums
+                grid_coords = offset
+                if (grid_coords[0] > 0 and grid_coords[0] <= maxs[0] and 
+                    grid_coords[1] > 0 and grid_coords[1] <= maxs[1] and
+                    grid_coords[2] > 0 and grid_coords[2] <= maxs[2] ):
+                    state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
                             0.0, 0.0, 0.0
                         )
-                    # elif param.surface_type == 11:
-                    #     if (
-                    #         float(grid_z) * model.dx < 0.4
-                    #         or float(grid_z) * model.dx > 0.53
-                    #     ):
-                    #         state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
-                    #             0.0, 0.0, 0.0
-                    #         )
-                    #     else:
-                    #         v_in = state.grid_v_out[grid_x, grid_y, grid_z]
-                    #         state.grid_v_out[grid_x, grid_y, grid_z] = (
-                    #             wp.vec3(v_in[0], 0.0, v_in[2]) * 0.3
-                    #         )
-                    # else:
-                    #     v = state.grid_v_out[grid_x, grid_y, grid_z]
-                    #     normal_component = wp.dot(v, n)
-                    #     if param.surface_type == 1:
-                    #         v = (
-                    #             v - normal_component * n
-                    #         )  # Project out all normal component
-                    #     else:
-                    #         v = (
-                    #             v - wp.min(normal_component, 0.0) * n
-                    #         )  # Project out only inward normal component
-                    #     if normal_component < 0.0 and wp.length(v) > 1e-20:
-                    #         v = wp.max(
-                    #             0.0, wp.length(v) + normal_component * param.friction
-                    #         ) * wp.normalize(
-                    #             v
-                    #         )  # apply friction here
-                    #     state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
-                    #         0.0, 0.0, 0.0
-                    #     )
-
         self.grid_postprocess.append(collide)
         self.modify_bc.append(None)
+
 
     # a cubiod is a rectangular cube'
     # centered at `point`

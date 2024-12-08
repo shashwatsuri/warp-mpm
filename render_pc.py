@@ -17,14 +17,14 @@ import math
 import time
 from interval import Interval
 import numpy as np
-from warp_utils import Dirichlet_collider,SDF_Collider
+from warp_utils import Dirichlet_collider,Sphere_Collider
 
 np.random.seed(450)
 wp.init()
 dvc="cuda:0"
 
 class HemispherePC:
-    def __init__(self, stage,sim_frames,collider_params,offset):
+    def __init__(self, stage,sim_frames,collider_params):
         self.sim_time = 0.0
         self.sim_frames = sim_frames
         self.idx=0
@@ -35,7 +35,6 @@ class HemispherePC:
         self.model = builder.finalize(device=dvc)
         self.model.ground= False
         self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 30)
-        self.offset = offset
 
     def render(self,trajectory):
         if self.renderer is None:
@@ -50,13 +49,36 @@ class HemispherePC:
                       width=10.0,
                       length=10.0
                  )
-            else:
+            elif "Sphere_Collider" in str(collider):
                  self.renderer.render_sphere(
                       name="mpm_sphere_collider",
                       pos=collider.pos,
                       rot= wp.quat_identity(),
                       radius=collider.radius
                  )
+            elif "SDF_Collider" in str(collider):
+                 max = wp.vec3(
+                     collider.mins.x
+                 )
+                 
+                 self.renderer.render_sphere(
+                      name="mpm_sphere_collider1",
+                      pos= collider.pos+collider.mins,
+                      rot= wp.quat_identity(),
+                      radius=collider.radius*0.1
+                 )
+                 self.renderer.render_sphere(
+                      name="mpm_sphere_collider2",
+                      pos= collider.pos+collider.maxs,
+                      rot= wp.quat_identity(),
+                      radius=collider.radius*0.1
+                 )
+                #  self.renderer.render_sphere(
+                #       name="mpm_sphere_collider3",
+                #       pos= collider.pos,
+                #       rot= wp.quat_identity(),
+                #       radius=collider.radius*0.1
+                #  )
         self.renderer.render_points(
                 name="mpm_points", points=trajectory, radius=0.007, colors=(0.8, 0.4, 0.2)
             )

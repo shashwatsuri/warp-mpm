@@ -59,7 +59,8 @@ mpm_solver.finalize_mu_lam_bulk() # set mu and lambda from the E and nu input
 
 # mpm_solver.add_surface_collider((0.0, 4.0, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
 
-mpm_solver.add_sphere_collider(center=(4.0,3.0,4.0),radius=0.4,surface='sticky',friction=0.0)
+mpm_solver.add_sdf_collider(center=(4.0,2.0,4.0),radius=0.2,surface='sticky',friction=0.0)
+
 
 
 directory_to_save = './sim_results/hemisphere'
@@ -67,11 +68,12 @@ if not os.path.exists(directory_to_save):
     os.makedirs(directory_to_save)
 
 stage_path = os.path.join(directory_to_save,"hemisphere.usd")
-hemisphere_pc = HemispherePC(stage_path,sim_frames,mpm_solver.collider_params,offset)
+hemisphere_pc = HemispherePC(stage_path,sim_frames,mpm_solver.collider_params)
 
 traj=[]
 indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),8_000,replace=False)
 for k in range(sim_frames):
+    # if (sim_frames%2==0):
     hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[indices])
     mpm_solver.p2g2p(k, 0.002, device=dvc)
 
