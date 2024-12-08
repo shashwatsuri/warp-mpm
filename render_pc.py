@@ -73,12 +73,12 @@ class HemispherePC:
                       rot= wp.quat_identity(),
                       radius=collider.radius*0.1
                  )
-                #  self.renderer.render_sphere(
-                #       name="mpm_sphere_collider3",
-                #       pos= collider.pos,
-                #       rot= wp.quat_identity(),
-                #       radius=collider.radius*0.1
-                #  )
+                 self.renderer.render_sphere(
+                      name="mpm_sphere_collider3",
+                      pos= collider.pos,
+                      rot= wp.quat_identity(),
+                      radius=collider.radius
+                 )
         self.renderer.render_points(
                 name="mpm_points", points=trajectory, radius=0.007, colors=(0.8, 0.4, 0.2)
             )

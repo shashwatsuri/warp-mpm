@@ -812,7 +812,7 @@ class MPM_Simulator_WARP:
         start_time=0.0,
         end_time=999.0,
     ):
-        lim = radius+1.0
+        lim = radius+0.1
         mins = np.array([-lim, -lim, -lim])
         voxel_size = self.mpm_model.dx
         maxs = np.array([lim, lim, lim])
@@ -869,14 +869,13 @@ class MPM_Simulator_WARP:
                     float(grid_y) * model.dx,
                     float(grid_z) * model.dx,
                 )
-                mins = param.mins+param.pos
+                wmins = param.mins+param.pos
                 voxel_size = param.voxel_size
-                maxs = param.maxs+param.pos
                 nums = param.nums
-                grid_coords = offset
-                if (grid_coords[0] > 0 and grid_coords[0] <= maxs[0] and 
-                    grid_coords[1] > 0 and grid_coords[1] <= maxs[1] and
-                    grid_coords[2] > 0 and grid_coords[2] <= maxs[2] ):
+                grid_coords = (offset-param.pos-param.mins)/voxel_size
+                if (grid_coords[0] > -wmins[0] and grid_coords[0] <= nums[0] and 
+                    grid_coords[1] > -wmins[1] and grid_coords[1] <= nums[1] and
+                    grid_coords[2] > -wmins[2] and grid_coords[2] <= nums[2] ):
                     state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
                             0.0, 0.0, 0.0
                         )
