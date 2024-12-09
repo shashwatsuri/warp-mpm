@@ -821,8 +821,8 @@ class MPM_Simulator_WARP:
         for x in range(nums[0]):
             for y in range(nums[1]):
                 for z in range(nums[2]):
-                    pos = mins + voxel_size * np.array([x, y, z])
-                    dis = np.linalg.norm(pos)
+                    grid_coords = mins + voxel_size * np.array([x, y, z])
+                    dis = np.linalg.norm(grid_coords)
                     sphere_sdf_np[x, y, z] = dis - radius
 
         # sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, radius*(1+voxel_size))    
@@ -873,12 +873,44 @@ class MPM_Simulator_WARP:
                 voxel_size = param.voxel_size
                 nums = param.nums
                 grid_coords = (offset-param.pos-param.mins)/voxel_size
+                sphere_sdf_np = param.sdf
+
                 if (grid_coords[0] > -wmins[0] and grid_coords[0] <= nums[0] and 
                     grid_coords[1] > -wmins[1] and grid_coords[1] <= nums[1] and
                     grid_coords[2] > -wmins[2] and grid_coords[2] <= nums[2] ):
-                    state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
-                            0.0, 0.0, 0.0
-                        )
+                    grid_coords_floor = warp.vec3i(
+                        int(grid_coords[0]), 
+                        int(grid_coords[1]), 
+                        int(grid_coords[2])
+                    )
+                    weights = warp.vec3(
+                        grid_coords[0] - float(grid_coords_floor[0]),
+                        grid_coords[1] - float(grid_coords_floor[1]),
+                        grid_coords[2] - float(grid_coords_floor[2])
+                    )
+                    c000 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1], grid_coords_floor[2]]
+                    c001 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1], grid_coords_floor[2] + 1]
+                    c010 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1] + 1, grid_coords_floor[2]]
+                    c011 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1] + 1, grid_coords_floor[2] + 1]
+                    c100 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1], grid_coords_floor[2]]
+                    c101 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1], grid_coords_floor[2] + 1]
+                    c110 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1] + 1, grid_coords_floor[2]]
+                    c111 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1] + 1, grid_coords_floor[2] + 1]
+
+                    c00 = c000 * (1.0 - weights[2]) + c001 * weights[2]
+                    c01 = c010 * (1.0 - weights[2]) + c011 * weights[2]
+                    c10 = c100 * (1.0 - weights[2]) + c101 * weights[2]
+                    c11 = c110 * (1.0 - weights[2]) + c111 * weights[2]
+
+                    c0 = c00 * (1.0 - weights[1]) + c01 * weights[1]
+                    c1 = c10 * (1.0 - weights[1]) + c11 * weights[1]
+
+                    sdf_value = c0 * (1.0 - weights[0]) + c1 * weights[0]
+
+                    if(sdf_value <=0.0):
+                        state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
+                                0.0, 0.0, 0.0
+                            )
         self.grid_postprocess.append(collide)
         self.modify_bc.append(None)
 
