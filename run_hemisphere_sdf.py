@@ -10,9 +10,9 @@ from render_pc import HemispherePC
 
 dvc = "cuda:0"
 
-tetra_mesh = meshio.read("/scratch-ssd/Repos/Deformation-Learning/shapes/hemisphere.vtk")
+tetra_mesh = meshio.read("/scratch-ssd/Repos/warp-mpm/shapes/homer.vtk")
 mpm_solver = MPM_Simulator_WARP(10) # initialize with whatever number is fine. it will be reintialized
-multiplier = 8.0
+multiplier = 7.0 # 7 for homer 8 for hemiphere
 offset = multiplier/2.0
 
 
@@ -50,7 +50,7 @@ material_params = {
     'nu': .3,
     "material": "jelly",
     'friction_angle': 35,
-    'g': [0.0, -5.0, 0.0],
+    'g': [0.0, -10.0, 0.0], # -5 for hemisphere -10 for homer
     "density": density
 }
 mpm_solver.set_parameters_dict(material_params)
@@ -72,7 +72,8 @@ stage_path = os.path.join(directory_to_save,"hemisphere.usd")
 hemisphere_pc = HemispherePC(stage_path,sim_frames,mpm_solver.collider_params)
 
 traj=[]
-indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),8_000,replace=False)
+num_samples = min([len(mpm_solver.mpm_state.particle_x),8_000])
+indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),num_samples,replace=False)
 for k in range(sim_frames):
     # if (sim_frames%2==0):
     hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[indices])
