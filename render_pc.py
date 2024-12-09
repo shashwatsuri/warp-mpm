@@ -36,7 +36,7 @@ class HemispherePC:
         self.model = builder.finalize(device=dvc)
         self.model.ground= False
         self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 30)
-        if "SDF_Collider" in str(collider):
+        if "SDF_Sphere_Collider" in str(collider):
             sdf = collider.sdf.numpy()
             sdf_indices = np.where(sdf <= 0)
             all_indices = np.where(sdf)
@@ -44,7 +44,14 @@ class HemispherePC:
             np.array(sdf_indices,dtype=float)*collider.voxel_size).T
             self.all_points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
             np.array(all_indices,dtype=float)*collider.voxel_size).T
-
+        elif("SDF_Collider" in str(collider)):
+            sdf = collider.sdf.numpy()
+            sdf_indices = np.where(sdf <= 0)
+            all_indices = np.where(sdf)
+            self.sdf_points = ((np.array(collider.pos) +np.array(collider.mins)+np.array(collider.centroid))[:,np.newaxis]+ \
+            np.array(sdf_indices,dtype=float)*collider.voxel_size).T
+            self.all_points = ((np.array(collider.pos) +np.array(collider.mins)+np.array(collider.centroid))[:,np.newaxis]+ \
+            np.array(all_indices,dtype=float)*collider.voxel_size).T
 
 
 
@@ -68,16 +75,13 @@ class HemispherePC:
                       rot= wp.quat_identity(),
                       radius=collider.radius
                  )
-            elif "SDF_Collider" in str(collider):
-                 max = wp.vec3(
-                     collider.mins.x
-                 )
-                 self.renderer.render_sphere(
-                      name="mpm_sphere_collider",
-                      pos= collider.pos,
-                      rot= wp.quat_identity(),
-                      radius=collider.radius
-                 )
+            elif ("SDF_Collider" in str(collider)) or ("SDF_Sphere_Collider" in str(collider)):
+                #  self.renderer.render_sphere(
+                #       name="mpm_sphere_collider",
+                #       pos= collider.pos,
+                #       rot= wp.quat_identity(),
+                #       radius=collider.radius
+                #  )
                  self.renderer.render_points(
                      name="all_points", points = self.all_points, radius=0.007, colors = (0.4,0.8,0.2)
                  )

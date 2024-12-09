@@ -4,13 +4,46 @@ from mpm_solver_warp import MPM_Simulator_WARP
 from engine_utils import *
 import torch
 import meshio
+import trimesh
+from mesh_to_sdf import mesh_to_voxels
 wp.init()
 wp.config.verify_cuda = True
 from render_pc import HemispherePC
 
 dvc = "cuda:0"
 
-tetra_mesh = meshio.read("/scratch-ssd/Repos/warp-mpm/shapes/homer.vtk")
+
+import numpy as np
+import trimesh
+
+# def compute_centered_bounding_box(obj_file):
+#     # Read the mesh from the .obj file
+#     mesh = meshio.read(obj_file)
+
+#     # Extract vertices (points)
+#     vertices = mesh.points  # Shape: (n_points, 3)
+
+#     # Calculate the bounding box
+#     min_coords = np.min(vertices, axis=0)
+#     max_coords = np.max(vertices, axis=0)
+#     bounding_box = (min_coords, max_coords)
+
+#     # Calculate the center of the bounding box
+#     center = (min_coords + max_coords) / 2
+
+#     # Shift vertices to center the bounding box at the origin
+#     centered_vertices = vertices - center
+
+#     return bounding_box, center
+
+
+
+tetra_mesh = meshio.read("/scratch-ssd/Repos/warp-mpm/shapes/hemisphere.vtk")
+# Example usage
+obj_file = "/scratch-ssd/Repos/warp-mpm/shapes/homer.obj"  # Replace with the path to your .obj file
+mesh = trimesh.load(obj_file)
+centroid = mesh.bounding_box.centroid
+
 mpm_solver = MPM_Simulator_WARP(10) # initialize with whatever number is fine. it will be reintialized
 multiplier = 7.0 # 7 for homer 8 for hemiphere
 offset = multiplier/2.0
@@ -59,8 +92,11 @@ mpm_solver.finalize_mu_lam_bulk() # set mu and lambda from the E and nu input
 
 # mpm_solver.add_surface_collider((0.0, 4.0, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
 
-mpm_solver.add_sdf_collider(center=(4.0,3.0,4.0),radius=0.5,surface='sticky',friction=0.0)
+# mpm_solver.add_sdf_sphere_collider(center=(4.0,3.0,4.0),radius=0.5,surface='sticky',friction=0.0)
 # mpm_solver.add_sphere_collider(center=(4.0,3.0,4.0),radius=0.5,surface='sticky',friction=0.0)
+
+# mpm_solver.add_sdf_sphere_collider(pos=(4.0,3.0,4.0),center=collider_center,bb=collider_bb,surface='sticky',friction=0.0)
+mpm_solver.add_sdf_collider(pos=(3.0,1.5,3.0), obj_file = obj_file, surface='sticky',friction=0.0)
 
 
 

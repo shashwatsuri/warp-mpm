@@ -6,6 +6,8 @@ from engine_utils import *
 from warp_utils import *
 from mpm_utils import *
 from warp.sim import SDF
+import trimesh
+from mesh_to_sdf import mesh_to_voxels
 
 
 class MPM_Simulator_WARP:
@@ -683,7 +685,6 @@ class MPM_Simulator_WARP:
 
                 if dotproduct < 0.0:
                     if param.surface_type == 0:
-                        # print("can it print")
                         state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
                             0.0, 0.0, 0.0
                         )
@@ -803,7 +804,7 @@ class MPM_Simulator_WARP:
         self.modify_bc.append(None)
 
 
-    def add_sdf_collider(
+    def add_sdf_sphere_collider(
         self,
         center,
         radius,
@@ -827,7 +828,7 @@ class MPM_Simulator_WARP:
 
         # sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, radius*(1+voxel_size))    
         sphere_sdf_wp = wp.array3d(sphere_sdf_np, dtype=float)    
-        collider_param = SDF_Collider()
+        collider_param = SDF_Sphere_Collider()
         collider_param.start_time=start_time
         collider_param.end_time=end_time
         collider_param.friction=friction
@@ -860,7 +861,7 @@ class MPM_Simulator_WARP:
             dt: float,
             state: MPMStateStruct,
             model: MPMModelStruct,
-            param: SDF_Collider,
+            param: SDF_Sphere_Collider,
         ):
             grid_x, grid_y, grid_z = wp.tid()
             if time >= param.start_time and time < param.end_time:
@@ -914,6 +915,118 @@ class MPM_Simulator_WARP:
         self.grid_postprocess.append(collide)
         self.modify_bc.append(None)
 
+    def add_sdf_collider(
+        self,
+        pos,
+        obj_file,
+        surface="sticky",
+        friction=0.0,
+        start_time=0.0,
+        end_time=999.0,
+    ):
+        # sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, radius*(1+voxel_size))
+        mesh = trimesh.load(obj_file)
+        centroid = mesh.bounding_box.centroid
+        max_extent = np.max(mesh.bounding_box.extents)
+        bounds = mesh.bounding_box.bounds
+        num_voxel=50
+        # voxels = mesh_to_voxels(mesh,num_voxel,pad=False)
+        # np.save("./voxels/homer.npy",voxels)    
+        voxels = np.load("./voxels/homer.npy")
+        sphere_sdf_wp = wp.array3d(voxels, dtype=float)    
+        collider_param = SDF_Collider()
+        collider_param.start_time=start_time
+        collider_param.end_time=end_time
+        collider_param.friction=friction
+        collider_param.pos=pos
+        collider_param.sdf = sphere_sdf_wp
+        collider_param.mins = (-1.0,-1.0,-1.0)
+        collider_param.voxel_size = 2.0/num_voxel
+        collider_param.nums = wp.array([voxels.shape[0],voxels.shape[1],voxels.shape[2]])
+        collider_param.maxs = (1.0,1.0,1.0)
+        collider_param.centroid = wp.vec3(centroid)
+        collider_param.max_extent = max_extent
+
+
+        if surface == "sticky" and friction != 0:
+            raise ValueError("friction must be 0 on sticky surfaces.")
+        if surface == "sticky":
+            collider_param.surface_type = 0
+        elif surface == "slip":
+            collider_param.surface_type = 1
+        elif surface == "cut":
+            collider_param.surface_type = 11
+        else:
+            collider_param.surface_type = 2
+
+        self.collider_params.append(collider_param)
+        
+        #-------------------------------------------------------------------------------
+
+        @wp.kernel
+        def collide(
+            time: float,
+            dt: float,
+            state: MPMStateStruct,
+            model: MPMModelStruct,
+            param: SDF_Collider,
+        ):
+            grid_x, grid_y, grid_z = wp.tid()
+            if time >= param.start_time and time < param.end_time:
+                offset = wp.vec3(
+                    float(grid_x) * model.dx,
+                    float(grid_y) * model.dx,
+                    float(grid_z) * model.dx,
+                )
+                wmins = param.mins+param.pos
+                voxel_size = param.voxel_size
+                nums = param.nums
+                maxs = param.maxs
+                centroid = param.centroid
+                max_extent = param.max_extent
+                grid_coords = (offset-centroid-param.pos-param.mins)/voxel_size
+                sphere_sdf_np = param.sdf
+                if (grid_coords[0] > -1.0-10.0 and grid_coords[0] <= 50.0+1.0 and 
+                    grid_coords[1] > -1.0-10.0 and grid_coords[1] <= 50.0+1.0 and
+                    grid_coords[2] > -1.0-10.0 and grid_coords[2] <= 50.0+1.0 ):
+                    # state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
+                    #             0.0, 0.0, 0.0
+                    #         )
+                    grid_coords_floor = warp.vec3i(
+                        int(grid_coords[0]), 
+                        int(grid_coords[1]), 
+                        int(grid_coords[2])
+                    )
+                    weights = warp.vec3(
+                        grid_coords[0] - float(grid_coords_floor[0]),
+                        grid_coords[1] - float(grid_coords_floor[1]),
+                        grid_coords[2] - float(grid_coords_floor[2])
+                    )
+                    c000 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1], grid_coords_floor[2]]
+                    c001 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1], grid_coords_floor[2] + 1]
+                    c010 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1] + 1, grid_coords_floor[2]]
+                    c011 = sphere_sdf_np[grid_coords_floor[0], grid_coords_floor[1] + 1, grid_coords_floor[2] + 1]
+                    c100 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1], grid_coords_floor[2]]
+                    c101 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1], grid_coords_floor[2] + 1]
+                    c110 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1] + 1, grid_coords_floor[2]]
+                    c111 = sphere_sdf_np[grid_coords_floor[0] + 1, grid_coords_floor[1] + 1, grid_coords_floor[2] + 1]
+
+                    c00 = c000 * (1.0 - weights[2]) + c001 * weights[2]
+                    c01 = c010 * (1.0 - weights[2]) + c011 * weights[2]
+                    c10 = c100 * (1.0 - weights[2]) + c101 * weights[2]
+                    c11 = c110 * (1.0 - weights[2]) + c111 * weights[2]
+
+                    c0 = c00 * (1.0 - weights[1]) + c01 * weights[1]
+                    c1 = c10 * (1.0 - weights[1]) + c11 * weights[1]
+
+                    sdf_value = c0 * (1.0 - weights[0]) + c1 * weights[0]
+
+                    if(sdf_value < 0.0):
+                        state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
+                                0.0, 0.0, 0.0
+                            )
+        self.grid_postprocess.append(collide)
+        self.modify_bc.append(None)
 
     # a cubiod is a rectangular cube'
     # centered at `point`
