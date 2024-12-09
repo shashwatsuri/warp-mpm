@@ -41,7 +41,7 @@ k_damp=300.0
 nu = k_lambda/(2*(k_lambda+k_mu))
 E = 2*k_mu*(1+nu)
 
-sim_frames = 400
+sim_frames = 500
 
 
 
@@ -50,7 +50,7 @@ material_params = {
     'nu': .3,
     "material": "jelly",
     'friction_angle': 35,
-    'g': [0.0, -10.0, 0.0],
+    'g': [0.0, -5.0, 0.0],
     "density": density
 }
 mpm_solver.set_parameters_dict(material_params)
@@ -59,7 +59,8 @@ mpm_solver.finalize_mu_lam_bulk() # set mu and lambda from the E and nu input
 
 # mpm_solver.add_surface_collider((0.0, 4.0, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
 
-mpm_solver.add_sdf_collider(center=(4.0,2.0,4.0),radius=0.2,surface='sticky',friction=0.0)
+mpm_solver.add_sdf_collider(center=(4.0,3.0,4.0),radius=0.5,surface='sticky',friction=0.0)
+# mpm_solver.add_sphere_collider(center=(4.0,3.0,4.0),radius=0.5,surface='sticky',friction=0.0)
 
 
 

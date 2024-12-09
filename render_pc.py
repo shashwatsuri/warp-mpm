@@ -72,19 +72,6 @@ class HemispherePC:
                  max = wp.vec3(
                      collider.mins.x
                  )
-                 
-                #  self.renderer.render_sphere(
-                #       name="mpm_sphere_collider1",
-                #       pos= collider.pos+collider.mins,
-                #       rot= wp.quat_identity(),
-                #       radius=collider.radius*0.1
-                #  )
-                #  self.renderer.render_sphere(
-                #       name="mpm_sphere_collider2",
-                #       pos= collider.pos+collider.maxs,
-                #       rot= wp.quat_identity(),
-                #       radius=collider.radius*0.1
-                #  )
                  self.renderer.render_sphere(
                       name="mpm_sphere_collider",
                       pos= collider.pos,
