@@ -38,9 +38,12 @@ class HemispherePC:
         self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 30)
         if "SDF_Collider" in str(collider):
             sdf = collider.sdf.numpy()
-            indices = np.where(sdf <= 0)
-            self.points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
-            np.array(indices,dtype=float)*collider.voxel_size).T
+            sdf_indices = np.where(sdf <= 0)
+            all_indices = np.where(sdf)
+            self.sdf_points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
+            np.array(sdf_indices,dtype=float)*collider.voxel_size).T
+            self.all_points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
+            np.array(all_indices,dtype=float)*collider.voxel_size).T
 
 
 
@@ -89,7 +92,10 @@ class HemispherePC:
                       radius=collider.radius
                  )
                  self.renderer.render_points(
-                     name="sdf_points", points = self.points, radius=0.007, colors = (0.4,0.8,0.2)
+                     name="all_points", points = self.all_points, radius=0.007, colors = (0.4,0.8,0.2)
+                 )
+                 self.renderer.render_points(
+                     name="sdf_points", points = self.sdf_points, radius=0.007, colors = (0.8,0.8,0.2)
                  )
         self.renderer.render_points(
                 name="mpm_points", points=trajectory, radius=0.007, colors=(0.8, 0.4, 0.2)
