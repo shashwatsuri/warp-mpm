@@ -30,28 +30,30 @@ class HemispherePC:
         self.idx=0
         self.sim_dt = 0.02
         self.collider_params = collider_params
-        collider=collider_params[0]
+       
 
         builder = wp.sim.ModelBuilder(gravity=0.0)
         self.model = builder.finalize(device=dvc)
         self.model.ground= False
         self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 30)
-        if "SDF_Sphere_Collider" in str(collider):
-            sdf = collider.sdf.numpy()
-            sdf_indices = np.where(sdf <= 0)
-            all_indices = np.where(sdf)
-            self.sdf_points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
-            np.array(sdf_indices,dtype=float)*collider.voxel_size).T
-            self.all_points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
-            np.array(all_indices,dtype=float)*collider.voxel_size).T
-        elif("SDF_Collider" in str(collider)):
-            sdf = collider.sdf.numpy()
-            sdf_indices = np.where(sdf <= 0)
-            all_indices = np.where(sdf)
-            self.sdf_points = ((np.array(collider.pos) +np.array(collider.mins)+np.array(collider.centroid))[:,np.newaxis]+ \
-            np.array(sdf_indices,dtype=float)*collider.voxel_size).T
-            self.all_points = ((np.array(collider.pos) +np.array(collider.mins)+np.array(collider.centroid))[:,np.newaxis]+ \
-            np.array(all_indices,dtype=float)*collider.voxel_size).T
+        if collider_params:
+            collider=collider_params[0]
+            if "SDF_Sphere_Collider" in str(collider):
+                sdf = collider.sdf.numpy()
+                sdf_indices = np.where(sdf <= 0)
+                all_indices = np.where(sdf)
+                self.sdf_points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
+                np.array(sdf_indices,dtype=float)*collider.voxel_size).T
+                self.all_points = ((np.array(collider.pos) +np.array(collider.mins))[:,np.newaxis]+ \
+                np.array(all_indices,dtype=float)*collider.voxel_size).T
+            elif("SDF_Collider" in str(collider)):
+                sdf = collider.sdf.numpy()
+                sdf_indices = np.where(sdf <= 0)
+                all_indices = np.where(sdf)
+                self.sdf_points = ((np.array(collider.pos) +np.array(collider.mins)+np.array(collider.centroid))[:,np.newaxis]+ \
+                np.array(sdf_indices,dtype=float)*collider.voxel_size).T
+                self.all_points = ((np.array(collider.pos) +np.array(collider.mins)+np.array(collider.centroid))[:,np.newaxis]+ \
+                np.array(all_indices,dtype=float)*collider.voxel_size).T
 
 
 
@@ -68,13 +70,6 @@ class HemispherePC:
                       width=10.0,
                       length=10.0
                  )
-            elif "Sphere_Collider" in str(collider):
-                 self.renderer.render_sphere(
-                      name="mpm_sphere_collider",
-                      pos=collider.pos,
-                      rot= wp.quat_identity(),
-                      radius=collider.radius
-                 )
             elif ("SDF_Collider" in str(collider)) or ("SDF_Sphere_Collider" in str(collider)):
                 #  self.renderer.render_sphere(
                 #       name="mpm_sphere_collider",
@@ -88,6 +83,14 @@ class HemispherePC:
                  self.renderer.render_points(
                      name="sdf_points", points = self.sdf_points, radius=0.007, colors = (0.8,0.8,0.2)
                  )
+            elif "Sphere_Collider" in str(collider):
+                 self.renderer.render_sphere(
+                      name="mpm_sphere_collider",
+                      pos=collider.pos,
+                      rot= wp.quat_identity(),
+                      radius=collider.radius
+                 )
+            
         self.renderer.render_points(
                 name="mpm_points", points=trajectory, radius=0.007, colors=(0.8, 0.4, 0.2)
             )

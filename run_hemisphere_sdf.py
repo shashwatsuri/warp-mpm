@@ -92,7 +92,7 @@ mpm_solver.finalize_mu_lam_bulk() # set mu and lambda from the E and nu input
 
 # mpm_solver.add_surface_collider((0.0, 4.0, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
 
-# mpm_solver.add_sdf_sphere_collider(center=(4.0,3.0,4.0),radius=0.5,surface='sticky',friction=0.0)
+# mpm_solver.add_sdf_sphere_collider(center=(3.5,2.5,3.5),radius=0.5,surface='sticky',friction=0.0)
 # mpm_solver.add_sphere_collider(center=(4.0,3.0,4.0),radius=0.5,surface='sticky',friction=0.0)
 
 # mpm_solver.add_sdf_sphere_collider(pos=(4.0,3.0,4.0),center=collider_center,bb=collider_bb,surface='sticky',friction=0.0)

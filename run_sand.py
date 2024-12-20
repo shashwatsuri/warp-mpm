@@ -13,7 +13,7 @@ mpm_solver = MPM_Simulator_WARP(10) # initialize with whatever number is fine. i
 
 
 # You can either load sampling data from an external h5 file, containing initial position (n,3) and particle_volume (n,)
-mpm_solver.load_from_sampling("sand_column.h5", n_grid = 150, device=dvc) 
+mpm_solver.load_from_sampling("./shapes/sand_column.h5", n_grid = 150, device=dvc) 
 
 # Or load from torch tensor (also position and volume)
 # Here we borrow the data from h5, but you can use your own
