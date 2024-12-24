@@ -120,6 +120,8 @@ class Sphere_Collider:
     end_time: float = 999.0
     friction: float = 0.0
     surface_type: int =0
+    traj: wp.array(dtype=wp.transformf) #type:ignore
+
 
 @wp.struct
 class SDF_Sphere_Collider:

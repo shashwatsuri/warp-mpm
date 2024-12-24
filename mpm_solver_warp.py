@@ -258,6 +258,11 @@ class MPM_Simulator_WARP:
     def set_parameters(self, device="cuda:0", **kwargs):
         self.set_parameters_dict(device, kwargs)
 
+    def set_trajectory(self,known,trajectory):
+        self.trajectory = trajectory
+        self.known = known
+
+
     def set_parameters_dict(self, kwargs={}, device="cuda:0"):
         if "material" in kwargs:
             if kwargs["material"] == "jelly":
@@ -730,32 +735,18 @@ class MPM_Simulator_WARP:
         center,
         radius,
         surface="sticky",
+        traj=None,
         friction=0.0,
         start_time=0.0,
         end_time=999.0,
-    ):
-        # lim = radius+1.0
-        # mins = np.array([-lim, -lim, -lim])
-        # voxel_size = self.mpm_model.dx
-        # maxs = np.array([lim, lim, lim])
-        # nums = np.ceil((maxs - mins) / (voxel_size)).astype(dtype=int)
-        # sphere_sdf_np = np.zeros(tuple(nums))
-        # for x in range(nums[0]):
-        #     for y in range(nums[1]):
-        #         for z in range(nums[2]):
-        #             pos = mins + voxel_size * np.array([x, y, z])
-        #             dis = np.linalg.norm(pos)
-        #             sphere_sdf_np[x, y, z] = dis - radius
-
-        # sphere_vdb = wp.Volume.load_from_numpy(sphere_sdf_np, mins, voxel_size, radius*(1+voxel_size))
-        # sphere_sdf = warp.sim.SDF(sphere_vdb)
-        
+    ):      
         collider_param = Sphere_Collider()
         collider_param.start_time=start_time
         collider_param.end_time=end_time
         collider_param.friction=friction
         collider_param.pos=center
         collider_param.radius=radius
+        collider_param.traj = traj
 
         if surface == "sticky" and friction != 0:
             raise ValueError("friction must be 0 on sticky surfaces.")
@@ -800,8 +791,19 @@ class MPM_Simulator_WARP:
                             0.0, 0.0, 0.0
                         )
 
+        def modify(time:float, dt:float, param: Sphere_Collider):
+            if time >= param.start_time and time < param.end_time:
+                # frame = wp.transformf(p=param.traj.numpy()[int(time/dt)][0][0:3],q=param.traj.numpy()[int(time/dt)][0][3:])
+                traj = param.traj.numpy()[27000+int(time/dt)*25,0][0:3]
+                print(27000+int(time/dt)*10)
+                print(param.traj.numpy()[27000+int(time/dt)*25,0][0:3])
+                traj[1] += 2.0
+                traj[0] = 4.0
+                traj[2] = 4.0
+                param.pos = wp.vec3(traj)
+
         self.grid_postprocess.append(collide)
-        self.modify_bc.append(None)
+        self.modify_bc.append(modify)
 
 
     def add_sdf_sphere_collider(
@@ -912,8 +914,17 @@ class MPM_Simulator_WARP:
                         state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
                                 0.0, 0.0, 0.0
                             )
+        
+        def modify(time, dt, param: Dirichlet_collider):
+            if time >= param.start_time and time < param.end_time:
+                param.point = wp.vec3(
+                    param.point[0] + dt * param.velocity[0],
+                    param.point[1] + dt * param.velocity[1],
+                    param.point[2] + dt * param.velocity[2],
+                )  # param.point + dt * param.velocity
+
         self.grid_postprocess.append(collide)
-        self.modify_bc.append(None)
+        self.modify_bc.append(modify)
 
     def add_sdf_collider(
         self,
@@ -1250,6 +1261,16 @@ class MPM_Simulator_WARP:
 
         
         self.particle_velocity_modifiers.append(modify_particle_v_before_p2g)
+
+
+    @wp.kernel
+    def enforce_trajectory(time:float,
+                           state: MPMStateStruct,
+                           ):
+        p = wp.tid()
+        
+
+
 
 
     # define a cylinder with center point, half_height, radius, normal
