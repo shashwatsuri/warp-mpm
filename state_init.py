@@ -31,7 +31,7 @@ tensor_x = torch.asarray(np.array(offset+ state_mesh,dtype=np.float32))
 
 
 mpm_solver.load_initial_data_from_torch(tensor_x=tensor_x,
-                                        tensor_volume=torch.ones(len(state_mesh)) * 2.5e-8,
+                                        tensor_volume=torch.ones(len(state_mesh)) * 2.5e-1,
                                         n_grid=150,
                                         grid_lim=multiplier,
                                         device=dvc,
@@ -40,10 +40,10 @@ mpm_solver.load_initial_data_from_torch(tensor_x=tensor_x,
 # Note: You must provide 'density=..' to set particle_mass = density * particle_volume
 
 
-density=100.0
-k_mu=9000.00 
-k_lambda=5000.0
-k_damp=300.0
+density=200.0
+k_mu=900.00 
+k_lambda=500.0
+k_damp=0.0
 
 nu = k_lambda/(2*(k_lambda+k_mu))
 E = 2*k_mu*(1+nu)
@@ -54,9 +54,9 @@ E = 2*k_mu*(1+nu)
 material_params = {
     'E': 1e4,
     'nu': .3,
-    "material": "jelly",
+    "material": "plasticine",
     'friction_angle': 35,
-    'g': [0.0, 0.0, 0.0], # -5 for hemisphere -10 for homer
+    'g': [0.0, -10.0, 0.0], # -5 for hemisphere -10 for homer
     "density": density
 }
 mpm_solver.set_parameters_dict(material_params)
@@ -79,8 +79,6 @@ sim_frames = trajectories.shape[0]
 
 
 positions = mpm_solver.mpm_state.particle_x.numpy()[hull.vertices]
-
-
 
 # setting up remapping
 rotation_matrix = np.array([
