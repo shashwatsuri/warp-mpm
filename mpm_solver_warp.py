@@ -139,6 +139,7 @@ class MPM_Simulator_WARP:
         self.tailored_struct_for_bc = MPMtailoredStruct()
         self.pre_p2g_operations = []
         self.impulse_params = []
+        self.traj_params = []
 
         self.particle_velocity_modifiers = []
         self.particle_velocity_modifier_params = []
@@ -258,9 +259,41 @@ class MPM_Simulator_WARP:
     def set_parameters(self, device="cuda:0", **kwargs):
         self.set_parameters_dict(device, kwargs)
 
-    def set_trajectory(self,known,trajectory):
+    def set_trajectory(self,mask,trajectory,start_time=0.0):
         self.trajectory = trajectory
-        self.known = known
+        self.mask = mask
+        param = Trajectory_param()
+        # param.start_time = start_time
+        # param.end_time = start_time + dt * num_dt
+        param.traj = trajectory
+        param.mask = mask
+        self.traj_params.append(param)
+        
+        
+        @wp.kernel
+        def set_points(
+            time: float, dt: float, state: MPMStateStruct, param: Trajectory_param
+        ):
+
+            p = wp.tid()
+
+            frame = wp.int32(time/dt)
+
+            # print(param.traj[frame][p])
+            # gt_x = wp.vec3f((100.0)*(param.traj[wp.max(381,frame+1)][p] - param.traj[frame][p]))
+            # print(param.traj)
+            gt_x =  param.traj[frame][p]
+            gt_v = wp.vec3f((500.0)*(param.traj[frame+1][p] - param.traj[frame][p]))
+
+            # print("here")
+
+            # print(p)
+            # if time >= param.start_time and time < param.end_time:
+            if param.mask[p] == 1:
+                state.particle_v[p] = gt_v
+                state.particle_x[p] = gt_x
+        self.pre_p2g_operations.append(set_points)
+
 
 
     def set_parameters_dict(self, kwargs={}, device="cuda:0"):
@@ -427,11 +460,12 @@ class MPM_Simulator_WARP:
         )
 
         # apply pre-p2g operations on particles
+        
         for k in range(len(self.pre_p2g_operations)):
             wp.launch(
                 kernel=self.pre_p2g_operations[k],
                 dim=self.n_particles,
-                inputs=[self.time, dt, self.mpm_state, self.impulse_params[k]],
+                inputs=[self.time, dt, self.mpm_state, self.traj_params[k]],
                 device=device,
             )
         # apply dirichlet particle v modifier
@@ -781,12 +815,49 @@ class MPM_Simulator_WARP:
                 radius= param.radius
                 pos = param.pos
                 dist = wp.length(pos - offset)
+                n = wp.vec3(offset-pos)
+                scale = float(1e3)
+                n = wp.vec3(
+                    n[0] * scale,
+                    n[1] * scale,
+                    n[2] * scale
+                )
                 # n = wp.vec3(param.normal[0], param.normal[1], param.normal[2])
                 # dotproduct = wp.dot(offset, n)
 
                 if dist < radius:
                     if param.surface_type == 0:
-                        # print(dist)
+                        state.grid_v_out[grid_x, grid_y, grid_z] = n
+                    elif param.surface_type == 11:
+                        if (
+                            float(grid_z) * model.dx < 0.4
+                            or float(grid_z) * model.dx > 0.53
+                        ):
+                            state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
+                                0.0, 0.0, 0.0
+                            )
+                        else:
+                            v_in = state.grid_v_out[grid_x, grid_y, grid_z]
+                            state.grid_v_out[grid_x, grid_y, grid_z] = (
+                                wp.vec3(v_in[0], 0.0, v_in[2]) * 0.3
+                            )
+                    else:
+                        v = state.grid_v_out[grid_x, grid_y, grid_z]
+                        normal_component = wp.dot(v, n)
+                        if param.surface_type == 1:
+                            v = (
+                                v - normal_component * n
+                            )  # Project out all normal component
+                        else:
+                            v = (
+                                v - wp.min(normal_component, 0.0) * n
+                            )  # Project out only inward normal component
+                        if normal_component < 0.0 and wp.length(v) > 1e-20:
+                            v = wp.max(
+                                0.0, wp.length(v) + normal_component * param.friction
+                            ) * wp.normalize(
+                                v
+                            )  # apply friction here
                         state.grid_v_out[grid_x, grid_y, grid_z] = wp.vec3(
                             0.0, 0.0, 0.0
                         )
@@ -795,8 +866,6 @@ class MPM_Simulator_WARP:
             if time >= param.start_time and time < param.end_time:
                 # frame = wp.transformf(p=param.traj.numpy()[int(time/dt)][0][0:3],q=param.traj.numpy()[int(time/dt)][0][3:])
                 traj = param.traj.numpy()[27000+int(time/dt)*25,0][0:3]
-                print(27000+int(time/dt)*10)
-                print(param.traj.numpy()[27000+int(time/dt)*25,0][0:3])
                 traj[1] += 2.0
                 traj[0] = 4.0
                 traj[2] = 4.0

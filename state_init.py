@@ -1,41 +1,37 @@
 import warp as wp
-from mpm_solver_warp import MPM_Simulator_WARP
-from engine_utils import *
 import torch
 import meshio
 import trimesh
-from mesh_to_sdf import mesh_to_voxels
+import numpy as np
+import scipy
+from scipy.spatial import ConvexHull
+
+from render_init import Hemisphere_Init
+from mpm_solver_warp import MPM_Simulator_WARP
+from engine_utils import *
+
 wp.init()
 wp.config.verify_cuda = True
-from render_init import Hemisphere_Init
-
 dvc = "cuda:0"
 
-
-import numpy as np
-import trimesh
-import scipy
-
 tetra_mesh = meshio.read("/scratch-ssd/Repos/warp-mpm/shapes/hemisphere.vtk")
-# # Example usage
-# obj_file = "/scratch-ssd/Repos/warp-mpm/shapes/homer.obj"  # Replace with the path to your .obj file
-# mesh = trimesh.load(obj_file)
-# centroid = mesh.bounding_box.centroid
+state_mesh = np.load("/scratch-ssd/Repos/Deformation-Learning/data/hemisphere/states/state_00420.npz")["particle_q"]/5.0
+hull = ConvexHull(state_mesh)
 
 mpm_solver = MPM_Simulator_WARP(10) # initialize with whatever number is fine. it will be reintialized
-multiplier = 8.0 # 7 for homer 8 for hemiphere
+multiplier = 10.0 # 7 for homer 8 for hemiphere
 offset = multiplier/2.0
 
 
 # You can either load sampling data from an external h5 file, containing initial position (n,3) and particle_volume (n,)
 # mpm_solver.load_from_sampling("sand_column.h5", n_grid = 150, device=dvc) 
 # mesh is in (-1,1) hence setting grid_lim to 2.0 and translating object by 1.0 to get it in (0,grid_lim)
-tensor_x = torch.asarray(np.array(offset+ tetra_mesh.points,dtype=np.float32))
-
+# tensor_x = torch.asarray(np.array(offset+ tetra_mesh.points,dtype=np.float32))
+tensor_x = torch.asarray(np.array(offset+ state_mesh,dtype=np.float32))
 
 
 mpm_solver.load_initial_data_from_torch(tensor_x=tensor_x,
-                                        tensor_volume=torch.ones(len(tetra_mesh.points)) * 2.5e-8,
+                                        tensor_volume=torch.ones(len(state_mesh)) * 2.5e-8,
                                         n_grid=150,
                                         grid_lim=multiplier,
                                         device=dvc,
@@ -52,7 +48,6 @@ k_damp=300.0
 nu = k_lambda/(2*(k_lambda+k_mu))
 E = 2*k_mu*(1+nu)
 
-sim_frames = 300
 
 
 
@@ -79,9 +74,12 @@ traj=[]
 num_samples = min([len(mpm_solver.mpm_state.particle_x),8_000])
 indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),num_samples,replace=False)
 
-trajectories = np.load('/scratch-ssd/Repos/Deformation-Learning/data/hemisphere/trajectories/hemisphere_traj.npy')  # Replace with actual data
+trajectories = np.load('/scratch-ssd/Repos/Deformation-Learning/data/hemisphere/trajectories/hemisphere_traj.npy')/5.0  # Replace with actual data
+sim_frames = trajectories.shape[0]
 
-positions = mpm_solver.mpm_state.particle_x.numpy()[indices]
+
+positions = mpm_solver.mpm_state.particle_x.numpy()[hull.vertices]
+
 
 
 # setting up remapping
@@ -91,7 +89,7 @@ rotation_matrix = np.array([
     [0, 1, 0]
 ],dtype=np.float32)
 
-trajectories  = ((trajectories @ rotation_matrix)/5.0) + offset
+trajectories  = ((trajectories @ rotation_matrix)) + offset
 
 point_cloud = trajectories[0]
 
@@ -105,11 +103,19 @@ Y = np.concatenate((Y,positions[ground_indices]),axis=0)
 known, unique_indices = np.unique(known, return_index=True)
 Y = Y[unique_indices]
 
+mask = np.zeros(state_mesh[:,0].shape)
+mask[known] = 1
+
+not_known = np.delete(np.arange(mpm_solver.mpm_state.particle_x.numpy().shape[0]),known)
+non_indices = np.random.choice(not_known,num_samples,replace=False)
+
 hemisphere_pc = Hemisphere_Init(stage_path,sim_frames,known,trajectories)
-mpm_solver.set_trajectory(known,trajectories)
+mpm_solver.set_trajectory(wp.array(mask,dtype=int),wp.array(trajectories,dtype=wp.vec3f))
+
+mpm_solver.add_surface_collider((0.0, offset, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
 
 for k in range(sim_frames):
-    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[known],k)
+    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[not_known],k)
     mpm_solver.p2g2p(k, 0.002, device=dvc)
 
 if hemisphere_pc.renderer:

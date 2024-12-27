@@ -169,6 +169,11 @@ class SDF_Collider:
     centroid: wp.vec3f
     max_extent: float
  
+@wp.struct
+class Trajectory_param:
+    mask: wp.array(dtype=int) #type:ignore
+    traj: wp.array2d(dtype=wp.vec3f) #type:ignore
+
 
 @wp.struct
 class Impulse_modifier:
@@ -183,7 +188,7 @@ class Impulse_modifier:
 
     point: wp.vec3
     size: wp.vec3
-    mask: wp.array(dtype=int)
+    mask: wp.array(dtype=int) #type:ignore
 
 
 @wp.struct

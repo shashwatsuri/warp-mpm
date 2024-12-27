@@ -10,9 +10,15 @@
 
 ### Dec 7
 - [x] Sphere collision works!
-- [ ] Setup the scene with the rocks loaded as the SDF and make sure the rendering works
-- [ ] Write the collision detection function for the rocks
-- [ ] Get  the collider to move as a function of time
+- [x] Setup the scene with the rocks loaded as the SDF and make sure the rendering works
+- [x] Write the collision detection function for the rocks
+- [x] Get  the collider to move as a function of time
 
 ## December 22
-- [] Realizing that collider traj does not actually store tranformations but actual positions. need to change the storing and accesssing
+- [ ] Realizing that collider traj does not actually store tranformations but actual positions. need to change the storing and accesssing
+
+## December 24
+- [x] Currently going to implicitly apply positions if that works, if not (DID NOT WORK)
+- [x] going to use a function of velocity to see if that works better (SORT OF WORKS)
+- [ ] Eventually The Gaussians should be used to create a gaussian field and that fields should figure out the velocity of all the surface points (convex hull) for the template mesh. makes you better leverage the gaussians too!
+

@@ -67,13 +67,13 @@ directory_to_save = './sim_results/hemisphere'
 if not os.path.exists(directory_to_save):
     os.makedirs(directory_to_save)
 
-stage_path = os.path.join(directory_to_save,"hemisphere.usd")
+stage_path = os.path.join(directory_to_save,"hemisphere_warp.usd")
 hemisphere_pc = HemispherePC(stage_path,sim_frames,mpm_solver.collider_params)
 
 traj=[]
 indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),8_000,replace=False)
 for k in range(sim_frames):
-    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[indices])
+    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[:])
     mpm_solver.p2g2p(k, 0.002, device=dvc)
 
 if hemisphere_pc.renderer:
