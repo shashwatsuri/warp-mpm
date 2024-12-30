@@ -22,3 +22,6 @@
 - [x] going to use a function of velocity to see if that works better (SORT OF WORKS)
 - [ ] Eventually The Gaussians should be used to create a gaussian field and that fields should figure out the velocity of all the surface points (convex hull) for the template mesh. makes you better leverage the gaussians too!
 
+
+## December 30
+- [ ] Need to discuss if we can assume the collider shape and trajectory to be known to more strongly enforce the boundary conditions using that too. This was done in the ultrasound thesis Shaifali shared

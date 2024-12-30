@@ -283,8 +283,8 @@ class MPM_Simulator_WARP:
             # gt_x = wp.vec3f((100.0)*(param.traj[wp.max(381,frame+1)][p] - param.traj[frame][p]))
             # print(param.traj)
             gt_x =  param.traj[frame][p]
-            gt_v = wp.vec3f((500.0)*(param.traj[frame+1][p] - param.traj[frame][p]))
-
+            gt_v = wp.vec3f((500.0)*(param.traj[frame+1][p] - param.traj[frame][p])) ## Works
+            #gt_v = wp.vec3f((200.0)*(param.traj[frame][p] - state.particle_x[p]))
             # print("here")
 
             # print(p)
