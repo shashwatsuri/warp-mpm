@@ -35,7 +35,7 @@ class Hemisphere_Init:
 
         builder = wp.sim.ModelBuilder(gravity=0.0)
         self.model = builder.finalize(device=dvc)
-        self.model.ground= False
+        self.model.ground= True
         self.renderer = wp.sim.render.SimRendererUsd(self.model, stage, scaling=1.0, fps= 30)
 
     def render(self,trajectory,k):

@@ -679,7 +679,7 @@ class MPM_Simulator_WARP:
     ):
         point = list(point)
         # Normalize normal
-        normal_scale = 1.0 / wp.sqrt(float(sum(x**2 for x in normal)))
+        normal_scale = 1.0 / (wp.sqrt(float(sum(x**2 for x in normal)))+1.0e-15)
         normal = list(normal_scale * x for x in normal)
 
         collider_param = Dirichlet_collider()

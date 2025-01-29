@@ -9,13 +9,15 @@ from scipy.spatial import ConvexHull
 from render_init import Hemisphere_Init
 from mpm_solver_warp import MPM_Simulator_WARP
 from engine_utils import *
+from scipy.interpolate import RBFInterpolator
 
 wp.init()
 wp.config.verify_cuda = True
 dvc = "cuda:0"
+scale=5.0
 
 tetra_mesh = meshio.read("/scratch-ssd/Repos/warp-mpm/shapes/hemisphere.vtk")
-state_mesh = np.load("/scratch-ssd/Repos/Deformation-Learning/data/hemisphere/states/state_00420.npz")["particle_q"]/5.0
+state_mesh = np.load("/scratch-ssd/Repos/Deformation-Learning/data/hemisphere/states/state_00420.npz")["particle_q"]/scale
 hull = ConvexHull(state_mesh)
 
 mpm_solver = MPM_Simulator_WARP(10) # initialize with whatever number is fine. it will be reintialized
@@ -68,13 +70,12 @@ directory_to_save = './sim_results/hemisphere'
 if not os.path.exists(directory_to_save):
     os.makedirs(directory_to_save)
 
-stage_path = os.path.join(directory_to_save,"hemisphere_warp.usd")
+stage_path = os.path.join(directory_to_save,"hemisphere_warp_2.usd")
 
 traj=[]
 num_samples = min([len(mpm_solver.mpm_state.particle_x),8_000])
-indices = np.random.choice(np.arange(len(mpm_solver.mpm_state.particle_x)),num_samples,replace=False)
 
-trajectories = np.load('/scratch-ssd/Repos/Deformation-Learning/data/hemisphere/trajectories/hemisphere_traj.npy')/5.0  # Replace with actual data
+trajectories = np.load('/scratch-ssd/Repos/Deformation-Learning/data/hemisphere/trajectories/hemisphere_traj.npy')/scale  # Replace with actual data
 sim_frames = trajectories.shape[0]
 
 
@@ -95,26 +96,38 @@ trimesh.points.PointCloud(point_cloud).export("./shapes/traj.ply")
 kdtree = scipy.spatial.cKDTree(positions)
 _, known = kdtree.query(point_cloud)  # Find closest mesh vertices
 Y = point_cloud  # Target positions
-ground_indices = np.where(positions[:,1]<0.1)[0]
-known = np.concatenate((known,ground_indices))
-Y = np.concatenate((Y,positions[ground_indices]),axis=0)
+# ground_indices = np.where(positions[:,1]<0.1)[0]
+# known = np.concatenate((known,ground_indices))
+# Y = np.concatenate((Y,positions[ground_indices]),axis=0)
 known, unique_indices = np.unique(known, return_index=True)
 Y = Y[unique_indices]
 
+# Compute displacement vectors
+D = Y - positions[unique_indices]
+
+# Train RBF interpolator on the displacements
+rbf = RBFInterpolator(positions[unique_indices], D, kernel='thin_plate_spline')
+
+# Interpolate displacement for all points
+displacement = rbf(positions)
+
+# Apply deformation
+
 mask = np.zeros(state_mesh[:,0].shape)
-mask[known] = 1
+mask[hull.vertices] = 1
 
-not_known = np.delete(np.arange(mpm_solver.mpm_state.particle_x.numpy().shape[0]),known)
-non_indices = np.random.choice(not_known,num_samples,replace=False)
+traj_pos = positions+displacement
 
-hemisphere_pc = Hemisphere_Init(stage_path,sim_frames,known,trajectories)
-mpm_solver.set_trajectory(wp.array(mask,dtype=int),wp.array(trajectories,dtype=wp.vec3f))
+# not_known = np.delete(np.arange(mpm_solver.mpm_state.particle_x.numpy().shape[0]),hull.vertices)
 
-mpm_solver.add_surface_collider((0.0, offset, 0.0), (0.0,1.0,0.0), 'sticky', 0.0)
+hemisphere_pc = Hemisphere_Init(stage_path,sim_frames,hull.vertices,traj_pos)
+mpm_solver.set_trajectory(wp.array(mask,dtype=int),wp.array(traj_pos,dtype=wp.vec3f))
 
-for k in range(sim_frames):
-    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[not_known],k)
-    mpm_solver.p2g2p(k, 0.002, device=dvc)
+mpm_solver.add_surface_collider((0.0, offset, 0.0), (0.0,trajectories[:,:,1].min()/scale,0.0), 'cut', 0.0)
+
+for k in range(370):
+    hemisphere_pc.render(mpm_solver.mpm_state.particle_x.numpy()[hull.vertices],k)
+    mpm_solver.p2g2p(k, 0.0002, device=dvc)
 
 if hemisphere_pc.renderer:
     hemisphere_pc.renderer.save()
